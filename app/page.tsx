@@ -34,19 +34,158 @@ const SENTIMENT_STYLES = {
   Neutral: 'bg-amber-50 text-amber-800 border-amber-200',
   Negative: 'bg-red-50 text-red-800 border-red-200',
 }
+const SENTIMENT_ICON = { Positive: '↑', Neutral: '→', Negative: '↓' }
 
-const SENTIMENT_ICON = {
-  Positive: '↑',
-  Neutral: '→',
-  Negative: '↓',
+function formatDuration(s: number) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
-function formatDuration(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+/* ── SVG primitives ── */
+function MapleLeaf({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 110" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M50,5 L44,27 L22,20 L33,39 L12,44 L30,51 L23,68 L42,60 L42,88 L50,78 L58,88 L58,60 L77,68 L70,51 L88,44 L67,39 L78,20 L56,27 Z" />
+      <rect x="47" y="88" width="6" height="17" rx="2" />
+    </svg>
+  )
 }
 
+function Snowflake({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="1.5" className={className} aria-hidden="true">
+      <line x1="12" y1="2" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <line x1="4.9" y1="4.9" x2="19.1" y2="19.1" />
+      <line x1="19.1" y1="4.9" x2="4.9" y2="19.1" />
+      <line x1="12" y1="2" x2="9" y2="5" /><line x1="12" y1="2" x2="15" y2="5" />
+      <line x1="12" y1="22" x2="9" y2="19" /><line x1="12" y1="22" x2="15" y2="19" />
+      <line x1="2" y1="12" x2="5" y2="9" /><line x1="2" y1="12" x2="5" y2="15" />
+      <line x1="22" y1="12" x2="19" y2="9" /><line x1="22" y1="12" x2="19" y2="15" />
+    </svg>
+  )
+}
+
+function PineTree({ x, height, className }: { x: number; height: number; className?: string }) {
+  const w = height * 0.55
+  const trunkH = height * 0.2
+  const trunkW = height * 0.1
+  return (
+    <g className={className}>
+      <polygon
+        points={`${x},${200 - trunkH} ${x - w / 2},200 ${x + w / 2},200`}
+        fill="#1a5c2a"
+      />
+      <polygon
+        points={`${x},${200 - trunkH - height * 0.45} ${x - w * 0.65},${200 - trunkH - height * 0.15} ${x + w * 0.65},${200 - trunkH - height * 0.15}`}
+        fill="#1a5c2a"
+      />
+      <polygon
+        points={`${x},${200 - trunkH - height * 0.75} ${x - w * 0.38},${200 - trunkH - height * 0.48} ${x + w * 0.38},${200 - trunkH - height * 0.48}`}
+        fill="#236b30"
+      />
+      <rect
+        x={x - trunkW / 2}
+        y={200 - trunkH}
+        width={trunkW}
+        height={trunkH}
+        fill="#5c3a1e"
+      />
+    </g>
+  )
+}
+
+/* ── Canada Scenery Banner ── */
+function CanadaBanner() {
+  return (
+    <div className="relative w-full overflow-hidden" style={{ height: 160 }}>
+      {/* Sky gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-sky-300 via-sky-100 to-white" />
+
+      {/* Mountains in background */}
+      <svg viewBox="0 0 800 160" className="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice">
+        {/* Far mountains — snowy peaks */}
+        <polygon points="0,160 80,60 160,160" fill="#d1d5db" />
+        <polygon points="60,160 160,45 260,160" fill="#e5e7eb" />
+        <polygon points="160,160 280,30 400,160" fill="#d1d5db" />
+        <polygon points="320,160 430,55 540,160" fill="#e5e7eb" />
+        <polygon points="500,160 600,40 700,160" fill="#d1d5db" />
+        <polygon points="650,160 740,65 800,160" fill="#e5e7eb" />
+        {/* Snow caps */}
+        <polygon points="160,45 140,80 180,80" fill="white" opacity="0.9" />
+        <polygon points="280,30 258,68 302,68" fill="white" opacity="0.9" />
+        <polygon points="600,40 580,75 620,75" fill="white" opacity="0.9" />
+
+        {/* Snowy ground */}
+        <ellipse cx="400" cy="165" rx="450" ry="22" fill="white" />
+
+        {/* Pine trees — left cluster */}
+        <PineTree x={30} height={70} />
+        <PineTree x={65} height={85} />
+        <PineTree x={100} height={60} />
+
+        {/* Pine trees — middle-left */}
+        <PineTree x={200} height={78} />
+        <PineTree x={235} height={90} />
+        <PineTree x={270} height={65} />
+
+        {/* Pine trees — middle-right */}
+        <PineTree x={520} height={80} />
+        <PineTree x={558} height={95} />
+        <PineTree x={592} height={68} />
+
+        {/* Pine trees — right cluster */}
+        <PineTree x={700} height={72} />
+        <PineTree x={735} height={88} />
+        <PineTree x={770} height={62} />
+
+        {/* Moose silhouette */}
+        <g transform="translate(360,95) scale(0.9)" fill="#2d1b06">
+          {/* Body */}
+          <ellipse cx="0" cy="0" rx="38" ry="20" />
+          {/* Neck */}
+          <path d="M28,-10 Q40,-25 42,-30 Q38,-32 32,-28 Q30,-18 22,-12 Z" />
+          {/* Head */}
+          <ellipse cx="40" cy="-32" rx="12" ry="8" />
+          {/* Snout/nose */}
+          <path d="M50,-30 Q60,-28 58,-24 Q54,-20 48,-23" />
+          {/* Ear */}
+          <path d="M35,-40 Q32,-48 38,-46 Q40,-40 36,-38" />
+          {/* Hump */}
+          <ellipse cx="-5" cy="-18" rx="14" ry="7" />
+          {/* Legs */}
+          <rect x="-25" y="16" width="7" height="30" rx="2" />
+          <rect x="-12" y="16" width="7" height="32" rx="2" />
+          <rect x="8" y="16" width="7" height="30" rx="2" />
+          <rect x="21" y="16" width="7" height="28" rx="2" />
+          {/* Antlers */}
+          <path d="M36,-40 L32,-58 L26,-64 M32,-58 L38,-68 M32,-58 L36,-62" stroke="#2d1b06" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <path d="M44,-38 L45,-56 L40,-65 M45,-56 L52,-63 M45,-56 L48,-60" stroke="#2d1b06" strokeWidth="3" fill="none" strokeLinecap="round" />
+          {/* Tail */}
+          <ellipse cx="-36" cy="-5" rx="5" ry="8" />
+        </g>
+
+        {/* Snow dots / falling snow */}
+        {[
+          [50,30],[120,15],[200,50],[310,25],[420,10],[480,40],[570,20],[660,35],[750,12],
+          [85,55],[175,38],[290,60],[400,45],[510,65],[630,50],[710,28],[780,55],
+        ].map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r="2.5" fill="white" opacity="0.85" />
+        ))}
+      </svg>
+
+      {/* Title overlay */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ paddingBottom: 24 }}>
+        <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm rounded-full px-5 py-2 shadow-sm">
+          <MapleLeaf className="w-5 h-5 text-red-600" />
+          <span className="text-sm font-semibold text-red-800 tracking-wide">Your Canadian Sales Intelligence Companion</span>
+          <MapleLeaf className="w-5 h-5 text-red-600" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Main page ── */
 export default function Home() {
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [notes, setNotes] = useState('')
@@ -55,7 +194,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [showTranscript, setShowTranscript] = useState(false)
 
-  // Recording state
   const [isRecording, setIsRecording] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -68,30 +206,20 @@ export default function Home() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       chunksRef.current = []
-
       const recorder = new MediaRecorder(stream)
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
-      }
-
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = () => {
         const mimeType = recorder.mimeType || 'audio/webm'
         const blob = new Blob(chunksRef.current, { type: mimeType })
         const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm'
-        const file = new File([blob], `recording.${ext}`, { type: mimeType })
-        setAudioFile(file)
-        stream.getTracks().forEach((t) => t.stop())
+        setAudioFile(new File([blob], `recording.${ext}`, { type: mimeType }))
+        stream.getTracks().forEach(t => t.stop())
       }
-
       recorder.start()
       mediaRecorderRef.current = recorder
       setIsRecording(true)
       setRecordingDuration(0)
-
-      timerRef.current = setInterval(() => {
-        setRecordingDuration((d) => d + 1)
-      }, 1000)
+      timerRef.current = setInterval(() => setRecordingDuration(d => d + 1), 1000)
     } catch {
       setError('Microphone access was denied. Please allow microphone access in your browser and try again.')
     }
@@ -111,15 +239,12 @@ export default function Home() {
     setLoading(true)
     setError(null)
     setResult(null)
-
     try {
       const formData = new FormData()
       if (audioFile) formData.append('audio', audioFile)
       if (notes.trim()) formData.append('notes', notes)
-
       const response = await fetch('/api/process', { method: 'POST', body: formData })
       const data = await response.json()
-
       if (!response.ok) throw new Error(data.error || 'Processing failed')
       setResult(data)
       setShowTranscript(false)
@@ -133,74 +258,85 @@ export default function Home() {
   const exportCSV = () => {
     if (!result) return
     const { extracted } = result
-
     const headers = [
-      'Company Name', 'Contact Name', 'Contact Email', 'Contact Phone',
-      'Service Interested', 'Deal Stage', 'Estimated Value', 'Timeline',
-      'Action Items', 'Meeting Summary', 'Pain Points', 'Sentiment', 'Sentiment Rationale',
+      'Company Name','Contact Name','Contact Email','Contact Phone',
+      'Service Interested','Deal Stage','Estimated Value','Timeline',
+      'Action Items','Meeting Summary','Pain Points','Sentiment','Sentiment Rationale',
     ]
-
     const actionItemsStr = (extracted.action_items ?? [])
       .map(ai => `${ai.task}${ai.owner ? ` [${ai.owner}]` : ''}${ai.due_date ? ` - ${ai.due_date}` : ''}`)
       .join('; ')
-
     const row = [
-      extracted.company_name ?? '',
-      extracted.contact_name ?? '',
-      extracted.contact_email ?? '',
-      extracted.contact_phone ?? '',
-      extracted.service_interested ?? '',
-      extracted.deal_stage ?? '',
-      extracted.estimated_value ?? '',
-      extracted.timeline ?? '',
-      actionItemsStr,
-      extracted.meeting_summary ?? '',
+      extracted.company_name ?? '', extracted.contact_name ?? '',
+      extracted.contact_email ?? '', extracted.contact_phone ?? '',
+      extracted.service_interested ?? '', extracted.deal_stage ?? '',
+      extracted.estimated_value ?? '', extracted.timeline ?? '',
+      actionItemsStr, extracted.meeting_summary ?? '',
       (extracted.pain_points ?? []).join('; '),
-      extracted.sentiment ?? '',
-      extracted.sentiment_rationale ?? '',
+      extracted.sentiment ?? '', extracted.sentiment_rationale ?? '',
     ]
-
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
     const csv = [headers.map(escape).join(','), row.map(escape).join(',')].join('\n')
-
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    const slug = extracted.company_name?.toLowerCase().replace(/\s+/g, '-') ?? 'meeting'
     a.href = url
-    a.download = `${slug}-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `${extracted.company_name?.toLowerCase().replace(/\s+/g, '-') ?? 'meeting'}-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const sentiment = result?.extracted.sentiment
-  const sentimentStyle = sentiment ? SENTIMENT_STYLES[sentiment] : ''
-  const sentimentIcon = sentiment ? SENTIMENT_ICON[sentiment] : ''
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-3">
-          <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+    <div className="min-h-screen bg-slate-50" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, rgba(220,38,38,0.04) 0%, transparent 60%), radial-gradient(circle at 80% 70%, rgba(220,38,38,0.04) 0%, transparent 60%)' }}>
+
+      {/* Scattered background decorations */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <MapleLeaf className="absolute top-[8%]  left-[3%]  w-20 h-20 text-red-300 opacity-20 rotate-12" />
+        <MapleLeaf className="absolute top-[20%] right-[4%] w-14 h-14 text-red-400 opacity-15 -rotate-15" />
+        <MapleLeaf className="absolute top-[55%] left-[2%] w-10 h-10 text-red-300 opacity-20 rotate-45" />
+        <MapleLeaf className="absolute bottom-[15%] right-[3%] w-16 h-16 text-red-300 opacity-15 rotate-30" />
+        <MapleLeaf className="absolute bottom-[40%] left-[1%] w-8  h-8  text-red-400 opacity-10 -rotate-20" />
+        <MapleLeaf className="absolute top-[70%] right-[6%] w-12 h-12 text-red-300 opacity-15 rotate-60" />
+        <Snowflake className="absolute top-[12%] left-[18%] w-8 h-8 text-sky-300 opacity-30" />
+        <Snowflake className="absolute top-[35%] right-[14%] w-6 h-6 text-sky-300 opacity-25" />
+        <Snowflake className="absolute bottom-[25%] left-[8%] w-7 h-7 text-sky-200 opacity-30" />
+        <Snowflake className="absolute bottom-[10%] right-[18%] w-5 h-5 text-sky-300 opacity-25" />
+        <Snowflake className="absolute top-[48%] left-[22%] w-4 h-4 text-sky-200 opacity-20" />
+      </div>
+
+      {/* ── Header ── */}
+      <header className="bg-red-700 shadow-md sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MapleLeaf className="w-9 h-9 text-white flex-shrink-0" />
+            <div>
+              <h1 className="text-lg font-bold text-white leading-tight tracking-wide">MeetingIntel</h1>
+              <p className="text-xs text-red-200">Sales meeting analyzer &amp; CRM exporter</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900 leading-tight">MeetingIntel</h1>
-            <p className="text-xs text-gray-400">Sales meeting analyzer &amp; CRM exporter</p>
+          <div className="hidden sm:flex items-center gap-1.5 text-red-200 text-xs font-medium">
+            <Snowflake className="w-4 h-4" />
+            <span>Made in Canada, eh?</span>
+            <Snowflake className="w-4 h-4" />
           </div>
         </div>
       </header>
+
+      {/* ── Canada Scenery Banner ── */}
+      <CanadaBanner />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
           {/* ── Left: Input Panel ── */}
           <div className="space-y-5">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-5">Meeting Input</h2>
+            <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <MapleLeaf className="w-4 h-4 text-red-600" />
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Meeting Input</h2>
+              </div>
 
               {/* Voice Recorder */}
               <div className="mb-5">
@@ -208,48 +344,40 @@ export default function Home() {
                   Voice Memo
                   <span className="ml-1 text-xs font-normal text-gray-400">optional</span>
                 </label>
-
-                <div className="flex flex-col items-center gap-3 py-6 px-4 border border-gray-200 rounded-xl bg-gray-50">
-                  {/* Record button */}
+                <div className="flex flex-col items-center gap-3 py-6 px-4 border border-red-100 rounded-xl bg-red-50/40">
                   <button
                     type="button"
                     onClick={isRecording ? stopRecording : startRecording}
-                    className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all focus:outline-none focus:ring-4 ${
+                    className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all focus:outline-none focus:ring-4 shadow-md ${
                       isRecording
-                        ? 'bg-red-500 hover:bg-red-600 focus:ring-red-200 shadow-lg'
+                        ? 'bg-red-600 hover:bg-red-700 focus:ring-red-200'
                         : audioFile
                         ? 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-200'
-                        : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-200'
+                        : 'bg-red-700 hover:bg-red-800 focus:ring-red-200'
                     }`}
                     aria-label={isRecording ? 'Stop recording' : 'Start recording'}
                   >
-                    {/* Pulse ring while recording */}
                     {isRecording && (
                       <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-50" />
                     )}
-
                     {isRecording ? (
-                      /* Stop icon */
                       <svg className="w-6 h-6 text-white relative z-10" fill="currentColor" viewBox="0 0 24 24">
                         <rect x="6" y="6" width="12" height="12" rx="1" />
                       </svg>
                     ) : audioFile ? (
-                      /* Checkmark */
                       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
                     ) : (
-                      /* Mic icon */
                       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                     )}
                   </button>
 
-                  {/* Status text */}
                   {isRecording ? (
                     <div className="text-center">
-                      <p className="text-sm font-semibold text-red-600">Recording {formatDuration(recordingDuration)}</p>
+                      <p className="text-sm font-semibold text-red-700">Recording {formatDuration(recordingDuration)}</p>
                       <p className="text-xs text-gray-400 mt-0.5">Click to stop</p>
                     </div>
                   ) : audioFile ? (
@@ -257,7 +385,7 @@ export default function Home() {
                       <p className="text-sm font-semibold text-emerald-700">Recording ready</p>
                       <button
                         type="button"
-                        onClick={() => { setAudioFile(null) }}
+                        onClick={() => setAudioFile(null)}
                         className="text-xs text-gray-400 hover:text-gray-600 mt-0.5 underline underline-offset-2"
                       >
                         Discard &amp; re-record
@@ -279,7 +407,7 @@ export default function Home() {
                   <span className="ml-1 text-xs font-normal text-gray-400">optional</span>
                 </label>
                 <textarea
-                  className="w-full border border-gray-300 rounded-xl p-3.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none leading-relaxed"
+                  className="w-full border border-gray-200 rounded-xl p-3.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent resize-none leading-relaxed bg-white"
                   rows={9}
                   placeholder={`Paste your notes here...
 
@@ -289,7 +417,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 />
               </div>
 
-              {/* Error */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                   <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,12 +426,11 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 </div>
               )}
 
-              {/* Process Button */}
               <button
                 type="button"
                 onClick={handleProcess}
                 disabled={loading || isRecording}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-indigo-300 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
+                className="w-full bg-red-700 hover:bg-red-800 active:bg-red-900 disabled:bg-red-300 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
               >
                 {loading ? (
                   <>
@@ -316,9 +442,7 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+                    <MapleLeaf className="w-4 h-4 text-white" />
                     Process Meeting
                   </>
                 )}
@@ -327,14 +451,14 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
 
             {/* Transcript accordion */}
             {result?.transcript && (
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between px-5 py-4 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center justify-between px-5 py-4 text-sm font-medium text-gray-700 hover:bg-red-50/40 transition-colors"
                   onClick={() => setShowTranscript(v => !v)}
                 >
                   <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                     </svg>
                     Voice Transcript
@@ -356,11 +480,14 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
           {result ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Extracted Data</h2>
+                <div className="flex items-center gap-2">
+                  <MapleLeaf className="w-4 h-4 text-red-600" />
+                  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Extracted Data</h2>
+                </div>
                 <button
                   type="button"
                   onClick={exportCSV}
-                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -370,8 +497,8 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
               </div>
 
               {sentiment && (
-                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${sentimentStyle}`}>
-                  <span className="font-bold">{sentimentIcon}</span>
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${SENTIMENT_STYLES[sentiment]}`}>
+                  <span className="font-bold">{SENTIMENT_ICON[sentiment]}</span>
                   {sentiment} Sentiment
                   {result.extracted.sentiment_rationale && (
                     <span className="text-xs font-normal opacity-80">— {result.extracted.sentiment_rationale}</span>
@@ -390,21 +517,15 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
 
               <Section title="Deal Information">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                  <div className="col-span-2">
-                    <Field label="Service / Solution" value={result.extracted.service_interested} />
-                  </div>
+                  <div className="col-span-2"><Field label="Service / Solution" value={result.extracted.service_interested} /></div>
                   <Field label="Deal Stage" value={result.extracted.deal_stage} badge />
                   <Field label="Estimated Value" value={result.extracted.estimated_value} />
-                  <div className="col-span-2">
-                    <Field label="Timeline" value={result.extracted.timeline} />
-                  </div>
+                  <div className="col-span-2"><Field label="Timeline" value={result.extracted.timeline} /></div>
                 </div>
               </Section>
 
               <Section title="Meeting Summary">
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {result.extracted.meeting_summary ?? <NullValue />}
-                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">{result.extracted.meeting_summary ?? <NullValue />}</p>
               </Section>
 
               {(result.extracted.pain_points ?? []).length > 0 && (
@@ -412,7 +533,7 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                   <ul className="space-y-2">
                     {result.extracted.pain_points.map((pt, i) => (
                       <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
                         {pt}
                       </li>
                     ))}
@@ -424,8 +545,8 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 <Section title="Action Items">
                   <div className="space-y-2">
                     {result.extracted.action_items.map((item, i) => (
-                      <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        <div className="w-4 h-4 rounded border-2 border-indigo-300 flex-shrink-0 mt-0.5" />
+                      <div key={i} className="flex items-start gap-3 p-3 bg-red-50/40 rounded-lg border border-red-100">
+                        <div className="w-4 h-4 rounded border-2 border-red-300 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-800 font-medium leading-snug">{item.task}</p>
                           <div className="flex flex-wrap items-center gap-3 mt-1.5">
@@ -454,29 +575,41 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="text-base font-medium text-gray-800 mb-1">Results will appear here</h3>
+            <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-12 flex flex-col items-center justify-center text-center">
+              <MapleLeaf className="w-16 h-16 text-red-200 mb-4" />
+              <h3 className="text-base font-semibold text-gray-800 mb-1">Results will appear here</h3>
               <p className="text-sm text-gray-400 max-w-xs leading-relaxed">
                 Record a voice memo or paste your notes, then click{' '}
                 <span className="font-medium text-gray-500">Process Meeting</span> to extract structured CRM data.
               </p>
+              <div className="flex items-center gap-2 mt-6 text-red-300">
+                <Snowflake className="w-5 h-5" />
+                <Snowflake className="w-4 h-4 opacity-60" />
+                <Snowflake className="w-5 h-5" />
+              </div>
             </div>
           )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="mt-16 border-t border-red-100 py-6 text-center">
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+          <MapleLeaf className="w-3.5 h-3.5 text-red-400" />
+          <span>MeetingIntel — Built with Canadian pride</span>
+          <MapleLeaf className="w-3.5 h-3.5 text-red-400" />
+        </div>
+      </footer>
     </div>
   )
 }
 
+/* ── Sub-components ── */
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{title}</h3>
+    <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-5">
+      <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-3">{title}</h3>
       {children}
     </div>
   )
@@ -488,7 +621,7 @@ function Field({ label, value, badge = false }: { label: string; value: string |
       <p className="text-xs text-gray-400 mb-0.5">{label}</p>
       {value ? (
         badge ? (
-          <span className="inline-block bg-indigo-50 text-indigo-700 text-xs font-medium px-2 py-0.5 rounded-full border border-indigo-100">
+          <span className="inline-block bg-red-50 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full border border-red-100">
             {value}
           </span>
         ) : (
