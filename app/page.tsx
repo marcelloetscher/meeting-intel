@@ -210,6 +210,10 @@ export default function Home() {
   const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, string>>({})
   const [reanalyzing, setReanalyzing] = useState(false)
 
+  // Airtable save state
+  const [airtableStatus, setAirtableStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [airtableError, setAirtableError] = useState<string | null>(null)
+
   const startRecording = useCallback(async () => {
     setError(null)
     setAudioFile(null)
@@ -258,6 +262,8 @@ export default function Home() {
       if (!response.ok) throw new Error(data.error || 'Processing failed')
       setResult(data)
       setShowTranscript(false)
+      setAirtableStatus('idle')
+      setAirtableError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
@@ -289,10 +295,31 @@ export default function Home() {
       setResult(data)
       setClarificationAnswers({})
       setShowTranscript(false)
+      setAirtableStatus('idle')
+      setAirtableError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setReanalyzing(false)
+    }
+  }
+
+  const handleSaveToAirtable = async () => {
+    if (!result) return
+    setAirtableStatus('saving')
+    setAirtableError(null)
+    try {
+      const response = await fetch('/api/airtable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extracted: result.extracted }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to save to Airtable')
+      setAirtableStatus('saved')
+    } catch (err) {
+      setAirtableStatus('error')
+      setAirtableError(err instanceof Error ? err.message : 'Failed to save to Airtable')
     }
   }
 
@@ -520,22 +547,73 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
           {/* ── Right: Results Panel ── */}
           {result ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <MapleLeaf className="w-4 h-4 text-red-600" />
                   <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Extracted Data</h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={exportCSV}
-                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Export CSV
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Save to Airtable */}
+                  <button
+                    type="button"
+                    onClick={handleSaveToAirtable}
+                    disabled={airtableStatus === 'saving' || airtableStatus === 'saved'}
+                    className={`flex items-center gap-1.5 text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm ${
+                      airtableStatus === 'saved'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200 cursor-default'
+                        : airtableStatus === 'error'
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white'
+                    }`}
+                  >
+                    {airtableStatus === 'saving' ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Saving...
+                      </>
+                    ) : airtableStatus === 'saved' ? (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Saved to Airtable
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        {airtableStatus === 'error' ? 'Retry Airtable' : 'Save to Airtable'}
+                      </>
+                    )}
+                  </button>
+
+                  {/* Export CSV */}
+                  <button
+                    type="button"
+                    onClick={exportCSV}
+                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                  </button>
+                </div>
               </div>
+
+              {/* Airtable error message */}
+              {airtableStatus === 'error' && airtableError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                  <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-red-700">{airtableError}</p>
+                </div>
+              )}
 
               {sentiment && (
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${SENTIMENT_STYLES[sentiment]}`}>
