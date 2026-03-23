@@ -8,11 +8,13 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const audioFile = formData.get('audio') as File | null
+    const existingTranscript = formData.get('transcript') as string | null
     const notes = formData.get('notes') as string | null
+    const clarificationsRaw = formData.get('clarifications') as string | null
 
-    // Step 1: Transcribe audio if provided
-    let transcript = ''
-    if (audioFile && audioFile.size > 0) {
+    // Step 1: Transcribe audio if provided (skipped on re-runs that supply existing transcript)
+    let transcript = existingTranscript?.trim() ?? ''
+    if (!transcript && audioFile && audioFile.size > 0) {
       if (!process.env.OPENAI_API_KEY) {
         return NextResponse.json({ error: 'OPENAI_API_KEY is not configured' }, { status: 500 })
       }
@@ -24,14 +26,29 @@ export async function POST(request: NextRequest) {
       transcript = transcription.text
     }
 
-    // Step 2: Combine transcript and notes
+    // Step 2: Build combined content
     const parts: string[] = []
     if (transcript) parts.push(`[VOICE TRANSCRIPT]\n${transcript}`)
     if (notes?.trim()) parts.push(`[MEETING NOTES]\n${notes.trim()}`)
-    const combined = parts.join('\n\n')
 
+    // Append clarification answers on re-runs
+    if (clarificationsRaw) {
+      const clarifications: { question: string; answer: string }[] = JSON.parse(clarificationsRaw)
+      const answered = clarifications.filter(c => c.answer.trim())
+      if (answered.length > 0) {
+        const qaBlock = answered
+          .map(c => `Q: ${c.question}\nA: ${c.answer}`)
+          .join('\n\n')
+        parts.push(`[CLARIFICATIONS PROVIDED BY CONSULTANT]\n${qaBlock}`)
+      }
+    }
+
+    const combined = parts.join('\n\n')
     if (!combined) {
-      return NextResponse.json({ error: 'No content provided. Please upload a voice recording or enter meeting notes.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'No content provided. Please record a voice memo or enter meeting notes.' },
+        { status: 400 }
+      )
     }
 
     // Step 3: Extract structured data with Claude
@@ -42,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
+      max_tokens: 2500,
       messages: [
         {
           role: 'user',
@@ -73,8 +90,25 @@ Return this exact JSON structure. Use null for missing string fields, [] for mis
   "meeting_summary": "2-3 sentence narrative summary of the key outcomes and context of the meeting",
   "pain_points": ["array of strings, each a distinct client pain point, challenge, or need mentioned"],
   "sentiment": "one of: Positive, Neutral, Negative",
-  "sentiment_rationale": "one concise sentence explaining the sentiment assessment based on client engagement and buying signals"
-}`,
+  "sentiment_rationale": "one concise sentence explaining the sentiment assessment based on client engagement and buying signals",
+  "clarifications": [
+    {
+      "issue": "short label describing the gap or inconsistency (max 6 words)",
+      "question": "a direct, specific question for the consultant to resolve this"
+    }
+  ]
+}
+
+For "clarifications": identify 2–5 of the most important gaps or inconsistencies that would affect CRM accuracy. Focus on:
+- Missing contact details (email, phone) that were not mentioned
+- Ambiguous timelines (e.g. "Q3" without a year)
+- Unclear or contradictory deal values
+- Deal stage that can't be determined from context
+- Inconsistencies between the transcript and notes
+- Unclear ownership of action items
+- Any statements that contradict each other
+
+If all critical information is present and consistent, return an empty array [].`,
         },
       ],
     })
@@ -84,7 +118,6 @@ Return this exact JSON structure. Use null for missing string fields, [] for mis
       return NextResponse.json({ error: 'Unexpected response format from AI' }, { status: 500 })
     }
 
-    // Strip any accidental markdown code fences
     const jsonMatch = content.text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return NextResponse.json({ error: 'Could not extract structured data from AI response' }, { status: 500 })

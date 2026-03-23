@@ -8,6 +8,11 @@ interface ActionItem {
   due_date: string | null
 }
 
+interface Clarification {
+  issue: string
+  question: string
+}
+
 interface ExtractedData {
   company_name: string | null
   contact_name: string | null
@@ -22,6 +27,7 @@ interface ExtractedData {
   pain_points: string[]
   sentiment: 'Positive' | 'Neutral' | 'Negative'
   sentiment_rationale: string | null
+  clarifications: Clarification[]
 }
 
 interface ProcessResult {
@@ -200,6 +206,10 @@ export default function Home() {
   const chunksRef = useRef<BlobPart[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Clarification re-run state
+  const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, string>>({})
+  const [reanalyzing, setReanalyzing] = useState(false)
+
   const startRecording = useCallback(async () => {
     setError(null)
     setAudioFile(null)
@@ -252,6 +262,37 @@ export default function Home() {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleReanalyze = async () => {
+    if (!result) return
+    const answeredCount = Object.values(clarificationAnswers).filter(a => a.trim()).length
+    if (answeredCount === 0) return
+
+    setReanalyzing(true)
+    setError(null)
+    try {
+      const formData = new FormData()
+      if (result.transcript) formData.append('transcript', result.transcript)
+      if (notes.trim()) formData.append('notes', notes)
+
+      const clarificationsWithAnswers = (result.extracted.clarifications ?? []).map((c, i) => ({
+        question: c.question,
+        answer: clarificationAnswers[i] ?? '',
+      }))
+      formData.append('clarifications', JSON.stringify(clarificationsWithAnswers))
+
+      const response = await fetch('/api/process', { method: 'POST', body: formData })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Re-analysis failed')
+      setResult(data)
+      setClarificationAnswers({})
+      setShowTranscript(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } finally {
+      setReanalyzing(false)
     }
   }
 
@@ -503,6 +544,64 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                   {result.extracted.sentiment_rationale && (
                     <span className="text-xs font-normal opacity-80">— {result.extracted.sentiment_rationale}</span>
                   )}
+                </div>
+              )}
+
+              {/* Clarifications */}
+              {(result.extracted.clarifications ?? []).length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                    <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Clarifications Needed</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {result.extracted.clarifications.map((c, i) => (
+                      <div key={i} className="bg-white border border-amber-100 rounded-xl p-4">
+                        <div className="flex items-start gap-2 mb-2">
+                          <span className="inline-block bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">
+                            {c.issue}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 font-medium mb-2">{c.question}</p>
+                        <input
+                          type="text"
+                          placeholder="Type your answer..."
+                          value={clarificationAnswers[i] ?? ''}
+                          onChange={e =>
+                            setClarificationAnswers(prev => ({ ...prev, [i]: e.target.value }))
+                          }
+                          className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent bg-amber-50/50"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleReanalyze}
+                    disabled={reanalyzing || Object.values(clarificationAnswers).every(a => !a.trim())}
+                    className="mt-4 w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 disabled:bg-amber-200 disabled:text-amber-400 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
+                  >
+                    {reanalyzing ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Re-analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Re-analyze with Clarifications
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
 
