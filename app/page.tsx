@@ -41,35 +41,71 @@ const SENTIMENT_ICON = {
   Negative: '↓',
 }
 
+function formatDuration(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 export default function Home() {
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
   const [showTranscript, setShowTranscript] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file && file.type.startsWith('audio/')) {
-      setAudioFile(file)
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<BlobPart[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startRecording = useCallback(async () => {
+    setError(null)
+    setAudioFile(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      chunksRef.current = []
+
+      const recorder = new MediaRecorder(stream)
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = () => {
+        const mimeType = recorder.mimeType || 'audio/webm'
+        const blob = new Blob(chunksRef.current, { type: mimeType })
+        const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm'
+        const file = new File([blob], `recording.${ext}`, { type: mimeType })
+        setAudioFile(file)
+        stream.getTracks().forEach((t) => t.stop())
+      }
+
+      recorder.start()
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+      setRecordingDuration(0)
+
+      timerRef.current = setInterval(() => {
+        setRecordingDuration((d) => d + 1)
+      }, 1000)
+    } catch {
+      setError('Microphone access was denied. Please allow microphone access in your browser and try again.')
     }
   }, [])
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
+  const stopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop()
+    if (timerRef.current) clearInterval(timerRef.current)
+    setIsRecording(false)
   }, [])
-
-  const handleDragLeave = useCallback(() => setIsDragging(false), [])
 
   const handleProcess = async () => {
     if (!audioFile && !notes.trim()) {
-      setError('Please upload a voice recording or enter meeting notes before processing.')
+      setError('Please record a voice memo or enter meeting notes before processing.')
       return
     }
     setLoading(true)
@@ -166,65 +202,72 @@ export default function Home() {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-5">Meeting Input</h2>
 
-              {/* Audio Upload */}
+              {/* Voice Recorder */}
               <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Voice Recording
-                  <span className="ml-1 text-xs font-normal text-gray-400">optional · MP3, M4A, WAV, WEBM up to 25 MB</span>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Voice Memo
+                  <span className="ml-1 text-xs font-normal text-gray-400">optional</span>
                 </label>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Upload audio file"
-                  className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all select-none focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
-                    isDragging
-                      ? 'border-indigo-400 bg-indigo-50'
-                      : audioFile
-                      ? 'border-emerald-400 bg-emerald-50'
-                      : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'
-                  }`}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
-                  onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="audio/*"
-                    className="hidden"
-                    onChange={e => {
-                      const f = e.target.files?.[0]
-                      if (f) setAudioFile(f)
-                      e.target.value = ''
-                    }}
-                  />
-                  {audioFile ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+
+                <div className="flex flex-col items-center gap-3 py-6 px-4 border border-gray-200 rounded-xl bg-gray-50">
+                  {/* Record button */}
+                  <button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all focus:outline-none focus:ring-4 ${
+                      isRecording
+                        ? 'bg-red-500 hover:bg-red-600 focus:ring-red-200 shadow-lg'
+                        : audioFile
+                        ? 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-200'
+                        : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-200'
+                    }`}
+                    aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+                  >
+                    {/* Pulse ring while recording */}
+                    {isRecording && (
+                      <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-50" />
+                    )}
+
+                    {isRecording ? (
+                      /* Stop icon */
+                      <svg className="w-6 h-6 text-white relative z-10" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="12" rx="1" />
                       </svg>
-                      <span className="text-sm font-medium text-emerald-700 truncate max-w-xs">{audioFile.name}</span>
+                    ) : audioFile ? (
+                      /* Checkmark */
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      /* Mic icon */
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Status text */}
+                  {isRecording ? (
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-red-600">Recording {formatDuration(recordingDuration)}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Click to stop</p>
+                    </div>
+                  ) : audioFile ? (
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-emerald-700">Recording ready</p>
                       <button
                         type="button"
-                        onClick={e => { e.stopPropagation(); setAudioFile(null) }}
-                        className="ml-1 text-gray-400 hover:text-gray-600 text-lg leading-none"
-                        aria-label="Remove file"
+                        onClick={() => { setAudioFile(null) }}
+                        className="text-xs text-gray-400 hover:text-gray-600 mt-0.5 underline underline-offset-2"
                       >
-                        &times;
+                        Discard &amp; re-record
                       </button>
                     </div>
                   ) : (
-                    <>
-                      <svg className="mx-auto w-8 h-8 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                      </svg>
-                      <p className="text-sm text-gray-500">
-                        Drop audio here or{' '}
-                        <span className="text-indigo-600 font-medium">browse</span>
-                      </p>
-                    </>
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 font-medium">Click to record</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Speak about your meeting after clicking</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -240,7 +283,7 @@ export default function Home() {
                   rows={9}
                   placeholder={`Paste your notes here...
 
-e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our supply chain optimisation practice. Budget around $200k, want to kick off in Q3. Main pain point is their warehouse fulfilment rate. Follow up with proposal by end of week.`}
+e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our supply chain optimisation practice. Budget around $200k, want to kick off in Q3. Main concern is cultural alignment. Follow up with proposal by Friday.`}
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                 />
@@ -260,7 +303,7 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
               <button
                 type="button"
                 onClick={handleProcess}
-                disabled={loading}
+                disabled={loading || isRecording}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-indigo-300 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (
@@ -312,7 +355,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
           {/* ── Right: Results Panel ── */}
           {result ? (
             <div className="space-y-4">
-              {/* Header row */}
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Extracted Data</h2>
                 <button
@@ -327,7 +369,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 </button>
               </div>
 
-              {/* Sentiment badge */}
               {sentiment && (
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${sentimentStyle}`}>
                   <span className="font-bold">{sentimentIcon}</span>
@@ -338,7 +379,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 </div>
               )}
 
-              {/* Company & Contact */}
               <Section title="Company & Contact">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   <Field label="Company" value={result.extracted.company_name} />
@@ -348,7 +388,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 </div>
               </Section>
 
-              {/* Deal Info */}
               <Section title="Deal Information">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   <div className="col-span-2">
@@ -362,14 +401,12 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 </div>
               </Section>
 
-              {/* Meeting Summary */}
               <Section title="Meeting Summary">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {result.extracted.meeting_summary ?? <NullValue />}
                 </p>
               </Section>
 
-              {/* Pain Points */}
               {(result.extracted.pain_points ?? []).length > 0 && (
                 <Section title="Pain Points & Needs">
                   <ul className="space-y-2">
@@ -383,7 +420,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
                 </Section>
               )}
 
-              {/* Action Items */}
               {(result.extracted.action_items ?? []).length > 0 && (
                 <Section title="Action Items">
                   <div className="space-y-2">
@@ -418,7 +454,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
               )}
             </div>
           ) : (
-            /* Empty state */
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -427,7 +462,7 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
               </div>
               <h3 className="text-base font-medium text-gray-800 mb-1">Results will appear here</h3>
               <p className="text-sm text-gray-400 max-w-xs leading-relaxed">
-                Upload a voice recording or paste your notes, then click{' '}
+                Record a voice memo or paste your notes, then click{' '}
                 <span className="font-medium text-gray-500">Process Meeting</span> to extract structured CRM data.
               </p>
             </div>
@@ -438,8 +473,6 @@ e.g. Met with Sarah Chen, VP Operations at Acme Corp. They're interested in our 
   )
 }
 
-/* ── Sub-components ── */
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -449,15 +482,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Field({
-  label,
-  value,
-  badge = false,
-}: {
-  label: string
-  value: string | null
-  badge?: boolean
-}) {
+function Field({ label, value, badge = false }: { label: string; value: string | null; badge?: boolean }) {
   return (
     <div>
       <p className="text-xs text-gray-400 mb-0.5">{label}</p>
